@@ -70,13 +70,8 @@ def handle_connect():
 
 @socketio.on('audioChunk')
 def handle_audio_chunk(data):
+    audio_data = base64.b64decode(data['data'])
     try:
-        #metadata = json.loads(data['metadata'])
-        #print("metadata", type(metadata), metadata)
-        #sample_rate = metadata['sampleRate']
-        #print("sample_rate", type(sample_rate), sample_rate)
-        audio_data = base64.b64decode(data['data'])
-        #print("audio_data", type(audio_data), audio_data)
         resampled_chunk = decode_and_resample(audio_data, 44100)
         print("resampled_chunk", type(resampled_chunk), resampled_chunk)
         recorder.feed_audio(resampled_chunk)
