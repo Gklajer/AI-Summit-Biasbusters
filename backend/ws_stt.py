@@ -6,6 +6,7 @@ import json
 import numpy as np
 from scipy.signal import resample
 from RealtimeSTT import AudioToTextRecorder
+import traceback
 
 # Initialisation de l'application Flask et SocketIO
 app = Flask(__name__)
@@ -59,6 +60,7 @@ def decode_and_resample(audio_data, original_sample_rate, target_sample_rate=160
         return resampled_audio.astype(np.int16).tobytes()
     except Exception as e:
         print(f"Error in resampling: {e}")
+        traceback.print_exc()
         return audio_data
 
 # Gestion des connexions WebSocket
