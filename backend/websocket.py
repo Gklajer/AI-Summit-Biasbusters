@@ -1,68 +1,66 @@
-const express = require("express");
-const http = require("http");
-const socketIo = require("socket.io");
+from flask import Flask, render_template
+from flask_socketio import SocketIO, emit
+import base64
 
-const app = express();
-const server = http.createServer(app);
-const io = socketIo(server);
+# Créer une application Flask
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app)
 
-// Lancer le serveur sur le port 5000
-server.listen(5000, () => {
-  console.log("Serveur WebSocket démarré sur ws://localhost:5000");
-});
+# Quand un client se connecte
+@socketio.on('connect')
+def handle_connect():
+    print("Un client est connecté")
+    emit('serverResponse', {
+        'nom_fonction': 'welcome',
+        'arguments': ['Bienvenue sur le serveur WebSocket !']
+    })
 
-// Quand un client se connecte via WebSocket
-io.on("connection", (socket) => {
-  console.log("Un client est connecté");
+# Quand le client envoie un message audio de début d'enregistrement
+@socketio.on('audioStart')
+def handle_audio_start():
+    print("Début de l'enregistrement")
+    # Vous pouvez ajouter ici des actions spécifiques à l'enregistrement audio
+    # Par exemple, démarrer l'enregistrement sur le serveur si nécessaire
 
-  // Écouter les messages d'enregistrement audio
-  socket.on("audioStart", () => {
-    console.log("Début de l'enregistrement");
-    // Vous pouvez implémenter des logiques ici pour démarrer l'enregistrement
-  });
+# Quand le client envoie un chunk audio (segment d'enregistrement)
+@socketio.on('audioChunk')
+def handle_audio_chunk(data):
+    print("Chunk audio reçu...")
 
-  socket.on("audioChunk", (data) => {
-    console.log("Enregistrement audio en cours...");
-    // Vous pouvez stocker ou traiter le chunk audio ici
-    console.log(data); // Affiche les données audio en Base64
-  });
+    # Décoder le chunk Base64 et sauvegarder le fichier ou le traiter
+    try:
+        audio_data = base64.b64decode(data['data'])  # Décoder le Base64
+        with open("audio_chunk.wav", "wb") as audio_file:
+            audio_file.write(audio_data)
+        print("Chunk audio sauvegardé.")
+    except Exception as e:
+        print(f"Erreur lors du traitement du chunk audio: {e}")
 
-  socket.on("audioEnd", () => {
-    console.log("Fin de l'enregistrement");
-    // Vous pouvez implémenter des logiques pour traiter la fin de l'enregistrement ici
-  });
+# Quand l'enregistrement est terminé
+@socketio.on('audioEnd')
+def handle_audio_end():
+    print("Fin de l'enregistrement")
+    # Vous pouvez ajouter ici des actions spécifiques à la fin de l'enregistrement
 
-  // Écouter une question du client et envoyer une réponse
-  socket.on("askForMoreInfo", (data) => {
-    console.log("Demande de plus d'informations reçue :", data);
+# Quand le client envoie une question ou un message
+@socketio.on('sendMessage')
+def handle_send_message(message):
+    print(f"Message reçu du client: {message}")
+    
+    if "question" in message.lower():
+        # Répondre avec une question de clarification
+        emit('serverResponse', {
+            'nom_fonction': 'askForMoreInfo',
+            'arguments': ['Peux-tu préciser ta question ?']
+        })
+    else:
+        # Répondre avec une réponse générique
+        emit('serverResponse', {
+            'nom_fonction': 'answer',
+            'arguments': ['Voici la réponse à ta question.']
+        })
 
-    // Répondre avec une question ou une information
-    socket.emit("serverResponse", {
-      nom_fonction: "askForMoreInfo",
-      arguments: ["Plus d'infos nécessaires !"],
-    });
-  });
-
-  // Écouter des messages de commande générale
-  socket.on("sendMessage", (message) => {
-    console.log("Message reçu du client:", message);
-
-    // Exemple de réponse basée sur le message
-    if (message.includes("question")) {
-      socket.emit("serverResponse", {
-        nom_fonction: "askForMoreInfo",
-        arguments: ["Peux-tu préciser ta question ?"],
-      });
-    } else {
-      socket.emit("serverResponse", {
-        nom_fonction: "answer",
-        arguments: ["Voici la réponse à ta question."],
-      });
-    }
-  });
-
-  // Déconnexion d'un client
-  socket.on("disconnect", () => {
-    console.log("Un client s'est déconnecté");
-  });
-});
+# Lancer le serveur sur le port 5000
+if __name__ == '__main__':
+    socketio.run(app, host='0.0.0.0', port=5000)
