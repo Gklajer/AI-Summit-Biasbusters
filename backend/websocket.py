@@ -41,6 +41,7 @@ def handle_audio_chunk(data):
 @socketio.on('audioEnd')
 def handle_audio_end():
     print("Fin de l'enregistrement")
+    handle_send_message("message")
     # Vous pouvez ajouter ici des actions spécifiques à la fin de l'enregistrement
 
 # Quand le client envoie une question ou un message
