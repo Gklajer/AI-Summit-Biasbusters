@@ -69,21 +69,18 @@ def handle_connect():
     print("Client connecté")
 
 @socketio.on('audioChunk')
-def handle_audio_chunk(data):
-    if isinstance(data, str):
-        data = json.loads(data)
-    #try:
-    metadata = json.loads(data['metadata'])
-    print("metadata", type(metadata), metadata)
-    sample_rate = metadata['sampleRate']
-    print("sample_rate", type(sample_rate), sample_rate)
-    audio_data = base64.b64decode(data['data'])
-    print("audio_data", type(audio_data), audio_data)
-    resampled_chunk = decode_and_resample(audio_data, sample_rate)
-    print("resampled_chunk", type(resampled_chunk), resampled_chunk)
-    recorder.feed_audio(resampled_chunk)
-    #except Exception as e:
-      #  print(f"Erreur lors du traitement du chunk audio: {e}")
+    try:
+        #metadata = json.loads(data['metadata'])
+        #print("metadata", type(metadata), metadata)
+        #sample_rate = metadata['sampleRate']
+        #print("sample_rate", type(sample_rate), sample_rate)
+        audio_data = base64.b64decode(data['data'])
+        #print("audio_data", type(audio_data), audio_data)
+        resampled_chunk = decode_and_resample(audio_data, 44100)
+        print("resampled_chunk", type(resampled_chunk), resampled_chunk)
+        recorder.feed_audio(resampled_chunk)
+    except Exception as e:
+        print(f"Erreur lors du traitement du chunk audio: {e}")
 
 @socketio.on('disconnect')
 def handle_disconnect():
