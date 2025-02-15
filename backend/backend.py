@@ -31,4 +31,5 @@ def upload_file():
         return jsonify({'error': 'Invalid file format. Only WAV files are allowed.'}), 400
 
 
+
 app.run(debug=True)
