@@ -60,7 +60,7 @@ if __name__ == '__main__':
         "enable_realtime_transcription": True,
         "realtime_processing_pause": 0,
         "realtime_model_type": "tiny.en",
-        'on_realtime_transcription_stabilized': text_detected,
+        #'on_realtime_transcription_stabilized': text_detected,
     }
     
     def run_recorder():
