@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
-  Text,
   TouchableOpacity,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
@@ -25,6 +23,8 @@ export default function Index() {
   const [isRecording, setIsRecording] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [pendingQuestion, setPendingQuestion] = useState("");
+  const [isListening, setIsListening] = useState(false);
+
   const [activeResource, setActiveResource] = useState(null); 
 
   // Animations
@@ -60,6 +60,9 @@ export default function Index() {
     return "0"; // Son par défaut
   };
 
+  const isListeningRef = useRef(false); // Utilisation d'un ref pour suivre l'état en temps réel
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
   const startRecording = async () => {
     try {
       const { granted } = await Audio.requestPermissionsAsync();
@@ -67,95 +70,78 @@ export default function Index() {
         alert("Permission d'accès au micro refusée");
         return;
       }
-
+  
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-
+  
       const newRecording = new Audio.Recording();
       await newRecording.prepareToRecordAsync(Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY);
       await newRecording.startAsync();
       setRecording(newRecording);
-      setIsRecording(true);
-
-      // Envoi d'un message de début d'enregistrement au serveur
-      if (socket) {
-        console.log("Envoi d'un message de début d'enregistrement au serveur");
-        socket.emit("audioStart");
-      }
+      setIsListening(true);
+      isListeningRef.current = true;
 
       Animated.timing(scaleAnim, {
-        toValue: 5,
-        duration: 500,
+        toValue: 1.5,
+        duration: 300,
         useNativeDriver: true,
       }).start();
-
-      // Capture et envoi des chunks audio en continu
-      // const interval = setInterval(async () => {
-      //   if (newRecording) {
-      //     console.log("Enregistrement en cours...");
-      //     const { sound, status } = await newRecording.createNewLoadedSoundAsync();
-      //     console.log('status', status);
-      //     if (status.isLoaded) {
-      //       const audioBase64 = await convertToBase64(newRecording);
-      //       console.log("Chunk audio converti en Base64 :", audioBase64.length);
-      //       if (socket) {
-      //         console.log("Envoi d'un chunk audio au serveur");
-      //         socket.emit("audioChunk", { data: audioBase64 });
-      //       }
-      //     }
-      //   }
-      // }, 1000);
-
-      const interval = setInterval(async () => {
-        if (newRecording) {
-          try {
-            const status = await newRecording.getStatusAsync();
-            console.log('Status de l\'enregistrement:', status);
-            
-            // Envoyer le chunk si l'enregistrement est en cours
-            if (status.isRecording) {  // Changed from isDoneRecording to isRecording
-              const audioBase64 = await convertToBase64(newRecording);
-              if (socket && audioBase64) {
-                console.log("Envoi d'un chunk audio au serveur");
-                socket.emit("audioChunk", { data: audioBase64 });
-              }
-            }
-          } catch (error) {
-            console.error("Erreur:", error);
+  
+      if (socket) {
+        console.log("🔴 Enregistrement démarré...");
+        socket.emit("audioStart");
+      }
+  
+      intervalRef.current = setInterval(async () => {
+        if (!newRecording || !isListeningRef.current) {
+          console.log("⚠️ Enregistrement arrêté, arrêt de l'envoi des chunks.");
+          return;
+        }
+  
+        try {
+          const audioBase64 = await convertToBase64(newRecording);
+          if (audioBase64) {
+            console.log("📤 Envoi d'un chunk audio...");
+            const data =  '{ data: audioBase64,metadata : {sampleRate : 44100}}'
+            socket?.emit("audioChunk", {data: audioBase64});
+          } else {
+            console.warn("⚠️ Aucun audioBase64 généré !");
           }
+        } catch (error) {
+          console.error("❌ Erreur lors de l'envoi du chunk audio :", error);
         }
       }, 1000);
-
-      newRecording.setOnRecordingStatusUpdate((status) => {
-        if (!status.isRecording) {
-          clearInterval(interval);
-        }
-      });
-
+  
     } catch (error) {
-      console.error("Erreur d'enregistrement :", error);
+      console.error("❌ Erreur lors de l'enregistrement :", error);
     }
   };
-
+  
   const stopRecording = async () => {
     if (!recording) return;
-
-    setIsRecording(false);
+  
+    setIsListening(false);
+    isListeningRef.current = false;
+  
     await recording.stopAndUnloadAsync();
-
-    // Envoi d'un message de fin d'enregistrement au serveur
-    if (socket) {
-      socket.emit("audioEnd");
-    }
-
     setRecording(null);
 
     Animated.timing(scaleAnim, {
       toValue: 1,
-      duration: 500,
+      duration: 300,
       useNativeDriver: true,
     }).start();
+  
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  
+    if (socket) {
+      console.log("🛑 Enregistrement arrêté.");
+      socket.emit("audioEnd");
+    }
   };
-
+  
   const convertToBase64 = async (recording) => {
     try {
       const uri = recording.getURI();
@@ -226,21 +212,13 @@ export default function Index() {
           ) : (
             <Animated.View style={{ transform: [{ scale: scaleAnim }], opacity: fadeAnim }}>
               <TouchableOpacity
-                style={[styles.microphoneBox, isRecording && styles.recording]}
-                onPressIn={startRecording}
-                onPressOut={stopRecording}
+                style={[styles.microphoneBox, isListening && styles.recording]}
+                onPress={isListening ? stopRecording : startRecording}
               >
-                <Ionicons name="mic" size={40} color="white" />
+                <Ionicons name={isListening ? "stop-circle" : "mic"} size={40} color="white" />
               </TouchableOpacity>
-            </Animated.View>
-          )}
 
-          {isChatActive && (
-            <ScrollView style={styles.chatContainer} contentContainerStyle={{ flexGrow: 1 }}>
-              <View style={styles.messageBubble}>
-                <Text style={styles.messageText}>{pendingQuestion}</Text>
-              </View>
-            </ScrollView>
+            </Animated.View>
           )}
         </View>
       </TouchableWithoutFeedback>
