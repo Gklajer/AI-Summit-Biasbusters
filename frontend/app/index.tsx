@@ -9,25 +9,28 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   StyleSheet,
-  Animated,
+  Animated
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import { io } from "socket.io-client";
 
 // URL du serveur WebSocket
-const SERVER_URL = "ws://ton-serveur:3000";
+const SERVER_URL = "ws://51.159.179.28:5000";
 
 export default function Index() {
-  const [messages, setMessages] = useState([]); // Liste des messages
-  const [isChatActive, setIsChatActive] = useState(false); // Active le mode chat après le premier message
+  const [messages, setMessages] = useState([]); 
+  const [isChatActive, setIsChatActive] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [socket, setSocket] = useState(null);
-  const [pendingQuestion, setPendingQuestion] = useState(""); // Stocke la question intermédiaire du serveur
+  const [pendingQuestion, setPendingQuestion] = useState("");
+  const [activeResource, setActiveResource] = useState(null); 
 
-  // Animation pour agrandir/réduire le bouton
+  // Animations
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const imageOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const newSocket = io(SERVER_URL);
@@ -37,12 +40,12 @@ export default function Index() {
       console.log("Réponse du serveur reçue :", data);
 
       if (data.nom_fonction === "askForMoreInfo") {
-        // Cas où le serveur demande une info supplémentaire
         setPendingQuestion(`Besoin d'une précision: ${JSON.stringify(data.arguments)}`);
+        setIsChatActive(true);
       } else {
-        // Cas d'une réponse finale nécessitant un calcul puis on joue le son
         const result = await processFinalResponse(data);
         await playSound(result);
+        showAnimation(result);
       }
     });
 
@@ -51,16 +54,13 @@ export default function Index() {
     };
   }, []);
 
-  // Fonction pour traiter la réponse finale du serveur
   const processFinalResponse = async (data) => {
-    console.log("Traitement de la réponse finale :", data);
-        return "0"; // exemple
-    }
+    console.log("Réponse finale reçue :", data);
+    return "0"; // Son par défaut
+  };
 
-  // 🎤 Démarrer l'enregistrement avec animation
   const startRecording = async () => {
     try {
-      console.log("Démarrage de l'enregistrement...");
       const { granted } = await Audio.requestPermissionsAsync();
       if (!granted) {
         alert("Permission d'accès au micro refusée");
@@ -75,9 +75,8 @@ export default function Index() {
       setRecording(newRecording);
       setIsRecording(true);
 
-      // 🔴 Animation d'agrandissement
       Animated.timing(scaleAnim, {
-        toValue: 5, // Le bouton va couvrir tout l'écran
+        toValue: 5,
         duration: 500,
         useNativeDriver: true,
       }).start();
@@ -86,31 +85,26 @@ export default function Index() {
     }
   };
 
-  // 🛑 Arrêter l'enregistrement et envoyer le fichier
   const stopRecording = async () => {
-    console.log("Arrêt de l'enregistrement...");
     if (!recording) return;
 
     setIsRecording(false);
     await recording.stopAndUnloadAsync();
 
     const uri = recording.getURI();
-    console.log("Fichier audio enregistré :", uri);
     setRecording(null);
 
     if (uri) {
       await sendAudioToServer(uri);
     }
 
-    // 🔵 Animation de réduction
     Animated.timing(scaleAnim, {
-      toValue: 1, // Retour à la taille normale
+      toValue: 1,
       duration: 500,
       useNativeDriver: true,
     }).start();
   };
 
-  // 📤 Envoyer l'audio au serveur
   const sendAudioToServer = async (uri: string) => {
     try {
       const formData = new FormData();
@@ -136,11 +130,10 @@ export default function Index() {
     }
   };
 
-  // 🔊 Jouer un son en fonction du résultat
   const playSound = async (id: string) => {
     const sounds = {
-      "0": require("./audios/door.wav"),
-      "1": require("./audios/gun.wav"),
+      "0": require("./audios/eau.wav"),
+      "1": require("./audios/massage_cardiaque.wav"),
     };
 
     const soundFile = sounds[id];
@@ -158,38 +151,53 @@ export default function Index() {
     }
   };
 
+  const showAnimation = (id: string) => {
+    const images = {
+      "0": require("./images/banana.gif"),
+      "1": require("./images/santa.gif"),
+    };
+
+    setActiveResource(images[id]);
+
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(imageOpacity, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 60}
       style={styles.container}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.inner}>
-
-          {/* 🎤 Bouton Microphone avec animation */}
-          <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-            <TouchableOpacity
-              style={[styles.microphoneBox, isRecording && styles.recording]}
-              onPressIn={startRecording}
-              onPressOut={stopRecording}
-            >
-              <Ionicons name="mic" size={40} color="white" />
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* Affichage de la question intermédiaire si présente */}
-          {pendingQuestion ? (
-            <View style={styles.pendingQuestionContainer}>
-              <Text style={styles.pendingQuestionText}>{pendingQuestion}</Text>
-            </View>
-          ) : null}
+          {activeResource ? (
+            <Animated.Image source={activeResource} style={[styles.animationImage, { opacity: imageOpacity }]} />
+          ) : (
+            <Animated.View style={{ transform: [{ scale: scaleAnim }], opacity: fadeAnim }}>
+              <TouchableOpacity
+                style={[styles.microphoneBox, isRecording && styles.recording]}
+                onPressIn={startRecording}
+                onPressOut={stopRecording}
+              >
+                <Ionicons name="mic" size={40} color="white" />
+              </TouchableOpacity>
+            </Animated.View>
+          )}
 
           {isChatActive && (
             <ScrollView style={styles.chatContainer} contentContainerStyle={{ flexGrow: 1 }}>
-              {messages.map((item) => (
-                <View key={item.id} style={[styles.messageBubble, item.sender === "user" ? styles.userMessage : styles.botMessage]}>
-                  <Text style={styles.messageText}>{item.text}</Text>
-                </View>
-              ))}
+              <View style={styles.messageBubble}>
+                <Text style={styles.messageText}>{pendingQuestion}</Text>
+              </View>
             </ScrollView>
           )}
         </View>
@@ -198,31 +206,13 @@ export default function Index() {
   );
 }
 
-// 💡 Styles
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
   inner: { flex: 1, justifyContent: "center", alignItems: "center" },
-  microphoneBox: {
-    width: 150,
-    height: 150,
-    backgroundColor: "red",
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 100,
-    marginTop: 20,
-  },
-  recording: {
-    backgroundColor: "darkred",
-  },
-  pendingQuestionContainer: {
-    marginTop: 20,
-    padding: 15,
-    backgroundColor: "#FFD700",
-    borderRadius: 10,
-  },
-  pendingQuestionText: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
+  microphoneBox: { width: 150, height: 150, backgroundColor: "red", justifyContent: "center", alignItems: "center", borderRadius: 100, marginTop: 20 },
+  recording: { backgroundColor: "darkred" },
+  animationImage: { width: 300, height: 300, resizeMode: "contain" },
+  chatContainer: { flex: 1, width: "100%", paddingHorizontal: 20, marginTop: 10 },
+  messageBubble: { padding: 10, borderRadius: 10, backgroundColor: "#E5E5EA", marginBottom: 10, maxWidth: "80%" },
+  messageText: { fontSize: 16 },
 });
-
