@@ -50,13 +50,13 @@ recorder_thread.start()
 # Traitement et rééchantillonnage de l'audio
 def decode_and_resample(audio_data, original_sample_rate, target_sample_rate=16000):
     try:
-        print("audio_data", type(audio_data), audio_data)
+        #print("audio_data", type(audio_data), audio_data)
         audio_np = np.frombuffer(audio_data, dtype=np.int16)
-        print("audio_np", type(audio_np), audio_np)
+        #print("audio_np", type(audio_np), audio_np)
         num_target_samples = int(len(audio_np) * target_sample_rate / original_sample_rate)
-        print("num_target_samples", type(num_target_samples), num_target_samples)
+        #print("num_target_samples", type(num_target_samples), num_target_samples)
         resampled_audio = resample(audio_np, num_target_samples)
-        print("resampled_audio", type(resampled_audio), resampled_audio)
+        #print("resampled_audio", type(resampled_audio), resampled_audio)
         return resampled_audio.astype(np.int16).tobytes()
     except Exception as e:
         print(f"Error in resampling: {e}")
