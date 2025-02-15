@@ -72,7 +72,7 @@ def handle_connect():
 def handle_audio_chunk(data):
     audio_data = base64.b64decode(data['data'])
     resampled_chunk = decode_and_resample(audio_data, 44100)
-    print("resampled_chunk", type(resampled_chunk), resampled_chunk)
+    #print("resampled_chunk", type(resampled_chunk), resampled_chunk)
     try:
         recorder.feed_audio(resampled_chunk)
     except Exception as e:
