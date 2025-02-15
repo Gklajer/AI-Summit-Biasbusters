@@ -12,12 +12,33 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
+import { io } from "socket.io-client";
+
+// URL du serveur WebSocket
+const SERVER_URL = "ws://ton-serveur:3000";
 
 export default function Index() {
   const [messages, setMessages] = useState([]); // Liste des messages
   const [isChatActive, setIsChatActive] = useState(false); // Active le mode chat après le premier message
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [socket, setSocket] = useState(null);
+
+  useEffect(() => {
+    // Connexion au serveur WebSocket
+    const newSocket = io(SERVER_URL);
+    setSocket(newSocket);
+
+    // Écoute les messages du serveur
+    newSocket.on("playSound", async (id: string) => {
+      console.log(`Reçu ID: ${id}`);
+      await playSound(id);
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
 
   // 🎤 Démarrer l'enregistrement
   const startRecording = async () => {
@@ -81,6 +102,29 @@ export default function Index() {
       }
     } catch (error) {
       console.error("Erreur de requête :", error);
+    }
+  };
+
+  // 🔊 Jouer un son en fonction de l'ID
+  const playSound = async (id: string) => {
+    const sounds = {
+      "0": require("./assets/door.wav"),
+      "1": require("./assets/gun.wav"),
+      "2": require("./assets/woosh.wav"),
+    };
+
+    const soundFile = sounds[id];
+
+    if (!soundFile) {
+      console.warn("Aucun son trouvé pour l'ID:", id);
+      return;
+    }
+
+    try {
+      const { sound } = await Audio.Sound.createAsync(soundFile);
+      await sound.playAsync();
+    } catch (error) {
+      console.error("Erreur lecture son:", error);
     }
   };
 
