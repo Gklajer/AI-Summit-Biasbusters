@@ -9,8 +9,6 @@ if __name__ == '__main__':
     import json
     import logging
     import sys
-    from backend.redis import redis_client
-    from backend.llm import LLMAssistant
 
     logging.basicConfig(
         level=logging.INFO,
@@ -24,7 +22,6 @@ if __name__ == '__main__':
     recorder_ready = threading.Event()
     client_websocket = None
     main_loop = None  # This will hold our primary event loop
-    llm = LLMAssistant()
 
     async def send_to_client(message):
         global client_websocket
@@ -48,21 +45,21 @@ if __name__ == '__main__':
         print(f"\r{text}", flush=True, end='')
 
     recorder_config = {
-        "spinner": False,
-        "use_microphone": False,
-        "model": "small",
-        "language": "en",
-        "silero_sensitivity": 0.4,
-        "webrtc_sensitivity": 2,
-        "post_speech_silence_duration": 0.2,
-        "min_length_of_recording": 0,
-        "min_gap_between_recordings": 0,
-        "enable_realtime_transcription": True,
-        "realtime_processing_pause": 0,
-        "realtime_model_type": "tiny.en",
-        #'on_realtime_transcription_stabilized': text_detected,
+        'spinner': False,
+        'use_microphone': False,
+        'model': 'large-v2',
+        'language': 'en',
+        'silero_sensitivity': 0.4,
+        'webrtc_sensitivity': 2,
+        'post_speech_silence_duration': 0.7,
+        'min_length_of_recording': 0,
+        'min_gap_between_recordings': 0,
+        'enable_realtime_transcription': True,
+        'realtime_processing_pause': 0,
+        'realtime_model_type': 'tiny.en',
+        'on_realtime_transcription_stabilized': text_detected,
     }
-    
+
     def run_recorder():
         global recorder, main_loop, is_running
         print("Initializing RealtimeSTT...")
@@ -76,11 +73,10 @@ if __name__ == '__main__':
                 full_sentence = recorder.text()
                 if full_sentence:
                     if main_loop is not None:
-                        response = llm.chat(full_sentence)
                         asyncio.run_coroutine_threadsafe(
                             send_to_client(json.dumps({
-                                'type': 'response',
-                                'text': response
+                                'type': 'fullSentence',
+                                'text': full_sentence
                             })), main_loop)
                     print(f"\rSentence: {full_sentence}")
             except Exception as e:
@@ -108,7 +104,7 @@ if __name__ == '__main__':
                 if not recorder_ready.is_set():
                     print("Recorder not ready")
                     continue
-                    
+
                 try:
                     # Read the metadata length (first 4 bytes)
                     metadata_length = int.from_bytes(message[:4], byteorder='little')
@@ -124,7 +120,6 @@ if __name__ == '__main__':
                     print(f"Error processing message: {e}")
                     continue
         except websockets.exceptions.ConnectionClosed:
-            redis_client.clear_all_data(websocket)
             print("Client disconnected")
         finally:
             if client_websocket == websocket:
