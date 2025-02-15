@@ -9,8 +9,8 @@ if __name__ == '__main__':
     import json
     import logging
     import sys
-    from backend.redis import redis_client
-    from backend.llm import LLMAssistant
+    from redis import redis_client
+    from llm import LLMAssistant
 
     logging.basicConfig(
         level=logging.INFO,
