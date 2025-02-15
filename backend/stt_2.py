@@ -10,6 +10,7 @@ if __name__ == '__main__':
     import logging
     import sys
     from backend.redis import redis_client
+    from backend.llm import LLMAssistant
 
     logging.basicConfig(
         level=logging.INFO,
@@ -23,6 +24,7 @@ if __name__ == '__main__':
     recorder_ready = threading.Event()
     client_websocket = None
     main_loop = None  # This will hold our primary event loop
+    llm = LLMAssistant()
 
     async def send_to_client(message):
         global client_websocket
@@ -74,11 +76,11 @@ if __name__ == '__main__':
                 full_sentence = recorder.text()
                 if full_sentence:
                     if main_loop is not None:
-                        # on lance le llm
+                        response = llm.text(full_sentence)
                         asyncio.run_coroutine_threadsafe(
                             send_to_client(json.dumps({
-                                'type': 'fullSentence',
-                                'text': full_sentence
+                                'type': 'response',
+                                'text': response
                             })), main_loop)
                     print(f"\rSentence: {full_sentence}")
             except Exception as e:
