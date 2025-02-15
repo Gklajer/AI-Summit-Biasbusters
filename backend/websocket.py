@@ -11,10 +11,10 @@ socketio = SocketIO(app)
 @socketio.on('connect')
 def handle_connect():
     print("Un client est connecté")
-    emit('serverResponse', {
-        'nom_fonction': 'welcome',
-        'arguments': ['Bienvenue sur le serveur WebSocket !']
-    })
+    #emit('serverResponse', {
+    #    'nom_fonction': 'welcome',
+    #    'arguments': ['Bienvenue sur le serveur WebSocket !']
+    #})
 
 # Quand le client envoie un message audio de début d'enregistrement
 @socketio.on('audioStart')
