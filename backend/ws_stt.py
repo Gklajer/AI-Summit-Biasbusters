@@ -70,6 +70,8 @@ def handle_connect():
 
 @socketio.on('audioChunk')
 def handle_audio_chunk(data):
+    if isinstance(data, str):
+        data = json.loads(data)
     #try:
     metadata = json.loads(data['metadata'])
     print("metadata", type(metadata), metadata)
