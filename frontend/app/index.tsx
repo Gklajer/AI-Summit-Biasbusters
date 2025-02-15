@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
-import { io } from "socket.io-client";
+import { io, Socket} from "socket.io-client";
 
 // URL du serveur WebSocket
 const SERVER_URL = "ws://51.159.159.241:5000";
@@ -23,7 +23,7 @@ export default function Index() {
   const [isChatActive, setIsChatActive] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [socket, setSocket] = useState(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [pendingQuestion, setPendingQuestion] = useState("");
   const [activeResource, setActiveResource] = useState(null); 
 
@@ -44,6 +44,7 @@ export default function Index() {
         setIsChatActive(true);
       } else {
         const result = await processFinalResponse(data);
+        console.log(result)
         await playSound(result);
         showAnimation(result);
       }
@@ -77,6 +78,7 @@ export default function Index() {
 
       // Envoi d'un message de début d'enregistrement au serveur
       if (socket) {
+        console.log("Envoi d'un message de début d'enregistrement au serveur");
         socket.emit("audioStart");
       }
 
@@ -87,14 +89,38 @@ export default function Index() {
       }).start();
 
       // Capture et envoi des chunks audio en continu
+      // const interval = setInterval(async () => {
+      //   if (newRecording) {
+      //     console.log("Enregistrement en cours...");
+      //     const { sound, status } = await newRecording.createNewLoadedSoundAsync();
+      //     console.log('status', status);
+      //     if (status.isLoaded) {
+      //       const audioBase64 = await convertToBase64(newRecording);
+      //       console.log("Chunk audio converti en Base64 :", audioBase64.length);
+      //       if (socket) {
+      //         console.log("Envoi d'un chunk audio au serveur");
+      //         socket.emit("audioChunk", { data: audioBase64 });
+      //       }
+      //     }
+      //   }
+      // }, 1000);
+
       const interval = setInterval(async () => {
         if (newRecording) {
-          const { sound, status } = await newRecording.createNewLoadedSoundAsync();
-          if (status.isLoaded) {
-            const audioBase64 = await convertToBase64(newRecording);
-            if (socket) {
-              socket.emit("audioChunk", { data: audioBase64 });
+          try {
+            const status = await newRecording.getStatusAsync();
+            console.log('Status de l\'enregistrement:', status);
+            
+            // Envoyer le chunk si l'enregistrement est en cours
+            if (status.isRecording) {  // Changed from isDoneRecording to isRecording
+              const audioBase64 = await convertToBase64(newRecording);
+              if (socket && audioBase64) {
+                console.log("Envoi d'un chunk audio au serveur");
+                socket.emit("audioChunk", { data: audioBase64 });
+              }
             }
+          } catch (error) {
+            console.error("Erreur:", error);
           }
         }
       }, 1000);
@@ -147,7 +173,7 @@ export default function Index() {
   };
 
   const playSound = async (id: string) => {
-    const sounds = {
+    const sounds: { [key: string]: any } = {
       "0": require("./audios/gun.wav"),
       "1": require("./audios/door.wav"),
     };
@@ -168,7 +194,7 @@ export default function Index() {
   };
 
   const showAnimation = (id: string) => {
-    const images = {
+    const images: { [key: string]: any } = {
       "0": require("./images/banana.gif"),
       "1": require("./images/santa.gif"),
     };
