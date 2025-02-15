@@ -49,6 +49,15 @@ recorder_thread.start()
 
 # Traitement et rééchantillonnage de l'audio
 def decode_and_resample(audio_data, original_sample_rate, target_sample_rate=16000):
+    buffer_size = len(audio_data)
+    element_size = np.dtype(np.int16).itemsize
+    
+    # Si la taille du buffer n'est pas un multiple de la taille de l'élément, ajustez-la
+    if buffer_size % element_size != 0:
+        # Ajoutez des zéros pour compléter la taille du buffer
+        padding_size = element_size - (buffer_size % element_size)
+        audio_data += b'\0' * padding_size
+
     try:
         #print("audio_data", type(audio_data), audio_data)
         audio_np = np.frombuffer(audio_data, dtype=np.int16)
