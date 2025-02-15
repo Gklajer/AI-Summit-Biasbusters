@@ -24,21 +24,21 @@ export default function Index() {
   const [isRecording, setIsRecording] = useState(false);
   const [socket, setSocket] = useState(null);
 
-  useEffect(() => {
-    // Connexion au serveur WebSocket
-    const newSocket = io(SERVER_URL);
-    setSocket(newSocket);
+  // useEffect(() => {
+  //   // Connexion au serveur WebSocket
+  //   const newSocket = io(SERVER_URL);
+  //   setSocket(newSocket);
 
-    // Écoute les messages du serveur
-    newSocket.on("playSound", async (id: string) => {
-      console.log(`Reçu ID: ${id}`);
-      await playSound(id);
-    });
+  //   // Écoute les messages du serveur
+  //   newSocket.on("playSound", async (id: string) => {
+  //     console.log(`Reçu ID: ${id}`);
+  //     await playSound(id);
+  //   });
 
-    return () => {
-      newSocket.disconnect();
-    };
-  }, []);
+  //   return () => {
+  //     newSocket.disconnect();
+  //   };
+  // }, []);
 
   // 🎤 Démarrer l'enregistrement
   const startRecording = async () => {
@@ -108,9 +108,8 @@ export default function Index() {
   // 🔊 Jouer un son en fonction de l'ID
   const playSound = async (id: string) => {
     const sounds = {
-      "0": require("./assets/door.wav"),
-      "1": require("./assets/gun.wav"),
-      "2": require("./assets/woosh.wav"),
+      "0": require("./audios/door.wav"),
+      "1": require("./audios/gun.wav")
     };
 
     const soundFile = sounds[id];
