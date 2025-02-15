@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   StyleSheet,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
@@ -24,23 +25,24 @@ export default function Index() {
   const [isRecording, setIsRecording] = useState(false);
   const [socket, setSocket] = useState(null);
 
-  // useEffect(() => {
-  //   // Connexion au serveur WebSocket
-  //   const newSocket = io(SERVER_URL);
-  //   setSocket(newSocket);
+  // Animation pour agrandir/réduire le bouton
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  //   // Écoute les messages du serveur
-  //   newSocket.on("playSound", async (id: string) => {
-  //     console.log(`Reçu ID: ${id}`);
-  //     await playSound(id);
-  //   });
+  useEffect(() => {
+    const newSocket = io(SERVER_URL);
+    setSocket(newSocket);
 
-  //   return () => {
-  //     newSocket.disconnect();
-  //   };
-  // }, []);
+    newSocket.on("playSound", async (id: string) => {
+      console.log(`Reçu ID: ${id}`);
+      await playSound(id);
+    });
 
-  // 🎤 Démarrer l'enregistrement
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
+
+  // 🎤 Démarrer l'enregistrement avec animation
   const startRecording = async () => {
     try {
       console.log("Démarrage de l'enregistrement...");
@@ -57,6 +59,13 @@ export default function Index() {
       await newRecording.startAsync();
       setRecording(newRecording);
       setIsRecording(true);
+
+      // 🔴 Animation d'agrandissement
+      Animated.timing(scaleAnim, {
+        toValue: 5, // Le bouton va couvrir tout l'écran
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
     } catch (error) {
       console.error("Erreur d'enregistrement :", error);
     }
@@ -66,7 +75,7 @@ export default function Index() {
   const stopRecording = async () => {
     console.log("Arrêt de l'enregistrement...");
     if (!recording) return;
-    
+
     setIsRecording(false);
     await recording.stopAndUnloadAsync();
 
@@ -77,6 +86,13 @@ export default function Index() {
     if (uri) {
       await sendAudioToServer(uri);
     }
+
+    // 🔵 Animation de réduction
+    Animated.timing(scaleAnim, {
+      toValue: 1, // Retour à la taille normale
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
   };
 
   // 📤 Envoyer l'audio au serveur
@@ -109,7 +125,7 @@ export default function Index() {
   const playSound = async (id: string) => {
     const sounds = {
       "0": require("./audios/door.wav"),
-      "1": require("./audios/gun.wav")
+      "1": require("./audios/gun.wav"),
     };
 
     const soundFile = sounds[id];
@@ -128,20 +144,22 @@ export default function Index() {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}       
-    keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 60}
-    style={styles.container}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 60}
+      style={styles.container}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.inner}>
-          
-          {/* 🎤 Bouton Microphone */}
-          <TouchableOpacity
-            style={[styles.microphoneBox, isRecording && styles.recording]}
-            onPressIn={startRecording}
-            onPressOut={stopRecording}
-          >
-            <Ionicons name="mic" size={40} color="white" />
-          </TouchableOpacity>
+
+          {/* 🎤 Bouton Microphone avec animation */}
+          <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+            <TouchableOpacity
+              style={[styles.microphoneBox, isRecording && styles.recording]}
+              onPressIn={startRecording}
+              onPressOut={stopRecording}
+            >
+              <Ionicons name="mic" size={40} color="white" />
+            </TouchableOpacity>
+          </Animated.View>
 
           {isChatActive && (
             <ScrollView style={styles.chatContainer} contentContainerStyle={{ flexGrow: 1 }}>
@@ -163,16 +181,16 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
   inner: { flex: 1, justifyContent: "center", alignItems: "center" },
   microphoneBox: {
-    width: 250,
+    width: 150,
     height: 150,
     backgroundColor: "red",
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 15,
+    borderRadius: 100,
     marginTop: 20,
   },
   recording: {
-    backgroundColor: "darkred",
+    backgroundColor: "tomato",
   },
   chatContainer: {
     flex: 1,
