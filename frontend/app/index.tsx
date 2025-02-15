@@ -16,7 +16,7 @@ import { Audio } from "expo-av";
 import { io } from "socket.io-client";
 
 // URL du serveur WebSocket
-const SERVER_URL = "ws://51.159.179.28:5000";
+const SERVER_URL = "ws://51.159.159.241:5000";
 
 export default function Index() {
   const [messages, setMessages] = useState([]); 
@@ -75,11 +75,36 @@ export default function Index() {
       setRecording(newRecording);
       setIsRecording(true);
 
+      // Envoi d'un message de début d'enregistrement au serveur
+      if (socket) {
+        socket.emit("audioStart");
+      }
+
       Animated.timing(scaleAnim, {
         toValue: 5,
         duration: 500,
         useNativeDriver: true,
       }).start();
+
+      // Capture et envoi des chunks audio en continu
+      const interval = setInterval(async () => {
+        if (newRecording) {
+          const { sound, status } = await newRecording.createNewLoadedSoundAsync();
+          if (status.isLoaded) {
+            const audioBase64 = await convertToBase64(newRecording);
+            if (socket) {
+              socket.emit("audioChunk", { data: audioBase64 });
+            }
+          }
+        }
+      }, 1000);
+
+      newRecording.setOnRecordingStatusUpdate((status) => {
+        if (!status.isRecording) {
+          clearInterval(interval);
+        }
+      });
+
     } catch (error) {
       console.error("Erreur d'enregistrement :", error);
     }
@@ -91,12 +116,12 @@ export default function Index() {
     setIsRecording(false);
     await recording.stopAndUnloadAsync();
 
-    const uri = recording.getURI();
-    setRecording(null);
-
-    if (uri) {
-      await sendAudioToServer(uri);
+    // Envoi d'un message de fin d'enregistrement au serveur
+    if (socket) {
+      socket.emit("audioEnd");
     }
+
+    setRecording(null);
 
     Animated.timing(scaleAnim, {
       toValue: 1,
@@ -105,35 +130,26 @@ export default function Index() {
     }).start();
   };
 
-  const sendAudioToServer = async (uri: string) => {
+  const convertToBase64 = async (recording) => {
     try {
-      const formData = new FormData();
-      formData.append("audio", {
-        uri,
-        name: "audio_recording.wav",
-        type: "audio/wav",
+      const uri = recording.getURI();
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(",")[1]);
+        reader.readAsDataURL(blob);
       });
-
-      const response = await fetch("http://51.159.179.28:5000/upload", {
-        method: "POST",
-        headers: { "Content-Type": "multipart/form-data" },
-        body: formData,
-      });
-
-      if (response.ok) {
-        console.log("Audio envoyé avec succès !");
-      } else {
-        console.error("Erreur lors de l'envoi de l'audio :", await response.text());
-      }
     } catch (error) {
-      console.error("Erreur de requête :", error);
+      console.error("Erreur conversion Base64 :", error);
+      return null;
     }
   };
 
   const playSound = async (id: string) => {
     const sounds = {
-      "0": require("./audios/eau.wav"),
-      "1": require("./audios/massage_cardiaque.wav"),
+      "0": require("./audios/gun.wav"),
+      "1": require("./audios/door.wav"),
     };
 
     const soundFile = sounds[id];
