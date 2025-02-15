@@ -55,7 +55,13 @@ def handle_send_message(message):
             'nom_fonction': 'askForMoreInfo',
             'arguments': ['Peux-tu préciser ta question ?']
         })
-    else:
+
+    emit('serverResponse', {
+            'nom_fonction': 'askForMoreInfo',
+            'arguments': ['Peux-tu préciser ta question ?']
+        })
+    
+    if False:
         # Répondre avec une réponse générique
         emit('serverResponse', {
             'nom_fonction': 'answer',
