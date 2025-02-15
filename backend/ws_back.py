@@ -27,6 +27,10 @@ def handle_audio_start():
 @socketio.on('audioChunk')
 def handle_audio_chunk(data):
     print("Chunk audio reçu...")
+    emit('serverResponse', {
+            'nom_fonction': 'askForMoreInfo',
+            'arguments': ['Peux-tu préciser ta question ?']
+        })
 
     # Décoder le chunk Base64 et sauvegarder le fichier ou le traiter
     try:
