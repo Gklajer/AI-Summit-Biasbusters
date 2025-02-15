@@ -48,7 +48,7 @@ recorder_thread = threading.Thread(target=run_recorder, daemon=True)
 recorder_thread.start()
 
 # Traitement et rééchantillonnage de l'audio
-def decode_and_resample(audio_data, original_sample_rate, target_sample_rate=16000):
+def decode_and_resample(audio_data, original_sample_rate, target_sample_rate=44100):
     buffer_size = len(audio_data)
     element_size = np.dtype(np.int16).itemsize
     print(buffer_size)
