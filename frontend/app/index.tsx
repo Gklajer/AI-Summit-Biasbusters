@@ -24,6 +24,7 @@ export default function Index() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [socket, setSocket] = useState(null);
+  const [pendingQuestion, setPendingQuestion] = useState(""); // Stocke la question intermédiaire du serveur
 
   // Animation pour agrandir/réduire le bouton
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -32,15 +33,29 @@ export default function Index() {
     const newSocket = io(SERVER_URL);
     setSocket(newSocket);
 
-    newSocket.on("playSound", async (id: string) => {
-      console.log(`Reçu ID: ${id}`);
-      await playSound(id);
+    newSocket.on("serverResponse", async (data) => {
+      console.log("Réponse du serveur reçue :", data);
+
+      if (data.nom_fonction === "askForMoreInfo") {
+        // Cas où le serveur demande une info supplémentaire
+        setPendingQuestion(`Besoin d'une précision: ${JSON.stringify(data.arguments)}`);
+      } else {
+        // Cas d'une réponse finale nécessitant un calcul puis on joue le son
+        const result = await processFinalResponse(data);
+        await playSound(result);
+      }
     });
 
     return () => {
       newSocket.disconnect();
     };
   }, []);
+
+  // Fonction pour traiter la réponse finale du serveur
+  const processFinalResponse = async (data) => {
+    console.log("Traitement de la réponse finale :", data);
+        return "0"; // exemple
+    }
 
   // 🎤 Démarrer l'enregistrement avec animation
   const startRecording = async () => {
@@ -105,7 +120,7 @@ export default function Index() {
         type: "audio/wav",
       });
 
-      const response = await fetch("https://votre-serveur.com/upload", {
+      const response = await fetch("http://51.159.179.28:5000/upload", {
         method: "POST",
         headers: { "Content-Type": "multipart/form-data" },
         body: formData,
@@ -121,7 +136,7 @@ export default function Index() {
     }
   };
 
-  // 🔊 Jouer un son en fonction de l'ID
+  // 🔊 Jouer un son en fonction du résultat
   const playSound = async (id: string) => {
     const sounds = {
       "0": require("./audios/door.wav"),
@@ -161,6 +176,13 @@ export default function Index() {
             </TouchableOpacity>
           </Animated.View>
 
+          {/* Affichage de la question intermédiaire si présente */}
+          {pendingQuestion ? (
+            <View style={styles.pendingQuestionContainer}>
+              <Text style={styles.pendingQuestionText}>{pendingQuestion}</Text>
+            </View>
+          ) : null}
+
           {isChatActive && (
             <ScrollView style={styles.chatContainer} contentContainerStyle={{ flexGrow: 1 }}>
               {messages.map((item) => (
@@ -190,29 +212,17 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   recording: {
-    backgroundColor: "tomato",
+    backgroundColor: "darkred",
   },
-  chatContainer: {
-    flex: 1,
-    width: "100%",
-    paddingHorizontal: 20,
-    marginTop: 10,
-  },
-  messageBubble: {
-    padding: 10,
+  pendingQuestionContainer: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: "#FFD700",
     borderRadius: 10,
-    marginBottom: 10,
-    maxWidth: "80%",
   },
-  userMessage: {
-    alignSelf: "flex-end",
-    backgroundColor: "#DCF8C6",
-  },
-  botMessage: {
-    alignSelf: "flex-start",
-    backgroundColor: "#E5E5EA",
-  },
-  messageText: {
+  pendingQuestionText: {
     fontSize: 16,
+    fontWeight: "bold",
   },
 });
+
