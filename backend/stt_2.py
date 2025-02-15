@@ -9,6 +9,7 @@ if __name__ == '__main__':
     import json
     import logging
     import sys
+    from backend.redis import redis_client
 
     logging.basicConfig(
         level=logging.INFO,
@@ -120,6 +121,7 @@ if __name__ == '__main__':
                     print(f"Error processing message: {e}")
                     continue
         except websockets.exceptions.ConnectionClosed:
+            redis_client.clear_all_data(websocket)
             print("Client disconnected")
         finally:
             if client_websocket == websocket:
