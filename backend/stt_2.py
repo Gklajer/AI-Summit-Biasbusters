@@ -76,7 +76,7 @@ if __name__ == '__main__':
                 full_sentence = recorder.text()
                 if full_sentence:
                     if main_loop is not None:
-                        response = llm.text(full_sentence)
+                        response = llm.chat(full_sentence)
                         asyncio.run_coroutine_threadsafe(
                             send_to_client(json.dumps({
                                 'type': 'response',
