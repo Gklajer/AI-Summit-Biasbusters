@@ -49,9 +49,13 @@ recorder_thread.start()
 # Traitement et rééchantillonnage de l'audio
 def decode_and_resample(audio_data, original_sample_rate, target_sample_rate=16000):
     try:
+        print("audio_data", type(audio_data), audio_data)
         audio_np = np.frombuffer(audio_data, dtype=np.int16)
+        print("audio_np", type(audio_np), audio_np)
         num_target_samples = int(len(audio_np) * target_sample_rate / original_sample_rate)
+        print("num_target_samples", type(num_target_samples), num_target_samples)
         resampled_audio = resample(audio_np, num_target_samples)
+        print("resampled_audio", type(resampled_audio), resampled_audio)
         return resampled_audio.astype(np.int16).tobytes()
     except Exception as e:
         print(f"Error in resampling: {e}")
@@ -66,9 +70,13 @@ def handle_connect():
 def handle_audio_chunk(data):
     try:
         metadata = json.loads(data['metadata'])
+        print("metadata", type(metadata), metadata)
         sample_rate = metadata['sampleRate']
+        print("sample_rate", type(sample_rate), sample_rate)
         audio_data = base64.b64decode(data['data'])
+        print("audio_data", type(audio_data), audio_data)
         resampled_chunk = decode_and_resample(audio_data, sample_rate)
+        print("resampled_chunk", type(resampled_chunk), resampled_chunk)
         recorder.feed_audio(resampled_chunk)
     except Exception as e:
         print(f"Erreur lors du traitement du chunk audio: {e}")
