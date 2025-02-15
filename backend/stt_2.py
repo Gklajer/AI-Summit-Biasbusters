@@ -46,21 +46,21 @@ if __name__ == '__main__':
         print(f"\r{text}", flush=True, end='')
 
     recorder_config = {
-        'spinner': False,
-        'use_microphone': False,
-        'model': 'large-v2',
-        'language': 'en',
-        'silero_sensitivity': 0.4,
-        'webrtc_sensitivity': 2,
-        'post_speech_silence_duration': 0.7,
-        'min_length_of_recording': 0,
-        'min_gap_between_recordings': 0,
-        'enable_realtime_transcription': True,
-        'realtime_processing_pause': 0,
-        'realtime_model_type': 'tiny.en',
+        "spinner": False,
+        "use_microphone": False,
+        "model": "small",
+        "language": "en",
+        "silero_sensitivity": 0.4,
+        "webrtc_sensitivity": 2,
+        "post_speech_silence_duration": 0.2,
+        "min_length_of_recording": 0,
+        "min_gap_between_recordings": 0,
+        "enable_realtime_transcription": True,
+        "realtime_processing_pause": 0,
+        "realtime_model_type": "tiny.en",
         'on_realtime_transcription_stabilized': text_detected,
     }
-
+    
     def run_recorder():
         global recorder, main_loop, is_running
         print("Initializing RealtimeSTT...")
