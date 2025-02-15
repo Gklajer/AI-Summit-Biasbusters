@@ -71,4 +71,4 @@ def handle_audio_chunk(sid, data):
 if __name__ == "__main__":
     threading.Thread(target=run_recorder, daemon=True).start()
     recorder_ready.wait()
-    eventlet.wsgi.server(eventlet.listen(("0.0.0.0", 8001)), app)
+    eventlet.wsgi.server(eventlet.listen(("0.0.0.0", 5000)), app)
